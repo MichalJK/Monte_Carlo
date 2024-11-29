@@ -1,0 +1,325 @@
+---
+title-block-banner: '#54698a' 
+title-block-banner-color : '#dee1e3'
+title: "Symulacja Monte Carlo"
+subtitle: "przykład"
+author: "Michał Kołodziejczyk"
+date: now
+format: 
+  html:
+    toc: true
+    toc-location: left
+    tbl-pos: 'H'
+    code-fold: true
+    code-summary: "Skrypt:"
+editor: visual
+lang: pl
+css: styles.css
+jupyter: python3
+cap-location: margin
+---
+
+Symulacja Monte Carlo to metoda używana do przewidywania prawdopodobieństwa wyniku, gdy występuje zmienność danych. Zmienność danych może być opisana w różny sposób. Najczęściej wykorzystuje się metody statystyczne i w przypadku, gdy dana wielkość posiada rozkład normalny, jego zmienność opisuje wartość średnia i odchylenie standardowe.
+
+Eksperyment Monte Carlo polega na losowaniu dużej liczby danych z założonego zakresu zmienności poszczególnej wielkości modelowej. Następnie wykorzystuje się je do wygenerowania dużej liczby odpowiedzi modelu i w rezultacie, do oceny uzyskanego rozkładu wyników metodami statystycznymi.
+
+Idea metody Monte Carlo została naszkicowana na poniższym rysunku dla bardzo prostego modelu opisanego zwykłą funkcją kilku zmiennych niezależnych $x_i$. W przedstawionym przykładzie założono dla uproszczenia, że rozkład każdej z nich jest zgodny z rozkładem Gaussa.
+
+![Szkic metody Monte Carlo](szkic.png){fig-align="center" width="439"}
+
+Schemat losowania danych jest następujący:
+
+-   z pomocą generatora liczb losowych losuje się prawdopodobieństwo $p$ dla każdej danej wejściowej $x_i$,
+
+-   następnie z pomocą funkcji odwrotnej skumulowanego rozkładu Gaussa wyznacza się bieżącą wartość danej $x_i$. Poniższy rysunek ilustruje ten proces.
+
+![Schemat losowania wartości $x_i$](losowanie.png){fig-align="center" width="373"}
+
+# Funkcje
+
+## Model
+
+Model opisany jest funkcją trzech zmiennych niezależnych $x_1, x_2, x_3$:
+
+$y = a + b \: sin(x_1) + c\: x_2^2 + d \: ln(x_3)$,
+
+gdzie $a,\: b,\: c$ i $d$ są stałymi parametrami.
+
+```{python}
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm, ks_2samp, shapiro
+import math
+
+# model
+def funkcja_model(param, x):
+    a = param[0]
+    b = param[1]
+    c = param[2]
+    d = param[3]
+    # model
+    y = a + b*math.sin(x[0]) + c * (x[1] ** 2) +d * math.log(x[2])
+    return y
+
+```
+
+## Wykresy
+
+Funkcja 'wykresy' kreśli histogram, rozkład gęstości prawdopodobieństwa i dystrybuantę każdej danej. Dla uproszczenia założono rozkłady normalne.
+
+```{python}
+
+def wykresy(i, x, sd):
+        plt.subplot(1, 3, 1)
+        plt.hist(np.random.normal(x[i], sd[i], 10000), bins=30, alpha=0.7, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("częstość")
+        plt.title("Histogram")
+
+        xx = np.linspace(x[i] - 4 * sd[i], x[i] + 4 * sd[i], 100)
+        yy = norm.pdf(xx, x[i], sd[i])
+        plt.subplot(1, 3, 2)
+        plt.plot(xx, yy, lw=2, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("gęstość prawdopodobieństwa")
+        plt.title(f"Rozkład x{i+1}")
+
+        yy = norm.cdf(xx, x[i], sd[i])
+        plt.subplot(1, 3, 3)
+        plt.plot(xx, yy, lw=2, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("prawdopodobieństwo skumulowane")
+        plt.title("Dystrybuanta")
+        plt.show()
+
+```
+
+## Monte Carlo
+
+Funkcja realizująca eksperyment Monte Carlo. Parametry formalne: n - liczba zmiennych $x_i$, nn - liczba losowań, x - wartości średnie danych, sd - ich odchylenia standardowe, parametry - parametry funkcji opisującej model. Funkcja wykorzystuje generator liczb losowych i funkcję odwrotną dystrybuanty.
+
+```{python}
+
+def monte_carlo(n, nn, x, sd, parametry):
+    np.random.seed(7)
+    y = np.zeros(nn)
+    for i in range(nn):
+        los_x = np.zeros(n)
+        for j in range(n):
+            los_x[j] = norm.ppf(np.random.rand(), x[j], sd[j])
+        y[i] = funkcja_model(parametry, los_x)
+    return y
+
+```
+
+# Dane
+
+Przykładowe dane.
+
+```{python}
+import pandas as pd
+from itables import show    
+
+n = 3  # liczba zmiennych niezależnych
+parametry = [1, 2, 3, 4]
+
+x1 = 10
+sd1 = 0.51
+
+x2 = 15
+sd2 = 0.5
+
+x3 = 5
+sd3 = 0.1
+
+x = [x1, x2, x3]
+sd = [sd1, sd2, sd3]
+
+dane_x = pd.DataFrame(x)
+dane_sd = pd.DataFrame(sd)
+
+dane = pd.concat([dane_x, dane_sd], axis=1)
+dane.columns = ['x','std']
+dane.index = ['x1','x2','x3']
+
+show(np.transpose(dane))
+
+```
+
+## Rozkłady danych
+
+Rozkłady danych wejściowych.
+
+```{python}
+#| label: fig-1
+#| fig-cap: 
+#|   - "Rozkład wielkości x1"
+#|   - "Rozkład wielkości x2"
+#|   - "Rozkład wielkości x3"
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+for i in range(n):
+    wykresy(i, x, sd)
+
+```
+
+# Symulacja Monte Carlo
+
+Założono liczbę losowań: $nn = 100 \: 000$.
+
+## Wyniki symulacji Monte Carlo
+
+```{python}
+
+nn = 100000  # liczba losowań
+
+y = monte_carlo(n, nn, x, sd, parametry)  # symulacja Monte Carlo
+
+```
+
+Wszystkie wyniki obliczeń modelu przedstawiono na rys. @fig-2. Poniżej wyznaczono ich wartość średnią i odchylenie standardowe.
+
+```{python}
+#| label: fig-2
+#| fig-cap: "Wyniki losowań w symulacji Monte Carlo "
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.scatter(range(len(y)), y, s=0.5, color="#54698a")
+plt.xlabel("nr losowania")
+plt.title("Wynik zbiorczy symulacji Monte Carlo")
+plt.show()
+
+y_av = np.mean(y)
+sd_y = np.std(y)
+
+print("Uzyskana wartość średnia y_av = ", round(y_av,2))
+print("Odchylenie standardowe sd_y = ", round(sd_y,2))
+
+```
+
+## Rozkład wielkości wynikowej
+
+@fig-3 przedstawia histogram i wykres kwantylowy $y$ w celu wizualnej oceny rozkładu wyniku.
+
+### Histogram i wykres kwantylowy
+
+Histogram pozwala ocenić symetryczność rozkładu, a wykres kwantylowy zgodność z rozkładem normalnym.
+
+```{python}
+#| label: fig-3
+#| fig-cap: "Wizualne sprawdzenie normalności rozkładu y "
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.subplot(1, 2, 1)
+plt.hist(y, bins=30, color="#54698a", alpha=0.7)
+plt.title("Histogram y")
+plt.ylabel("częstość")
+plt.xlabel("y")
+
+yy = (y - y_av) / sd_y  # standaryzacja rozkładu
+
+plt.subplot(1, 2, 2)
+plt.scatter(np.sort(norm.ppf(np.linspace(0.01, 0.99, len(yy)))), np.sort(yy), s=0.5, color="#54698a")
+plt.title('Wykres kwantylowy Q-Q')
+plt.xlabel('kwantyle rozkładu normalnego')
+plt.ylabel('kwantyle rozkładu y')
+plt.plot([min(yy), max(yy)], [min(yy), max(yy)], color='#96cdf2')
+plt.show()
+
+```
+
+### Sprawdzanie normalności rozkładu y
+
+Wynik $y$ liczy sobie 100 000 elementów, więc do oceny normalności jego rozkładu zastosowano test Kołmogorowa-Smirnowa.
+
+```{python}
+
+# test Kołmogorowa-Smirnowa
+ksx = ks_2samp(y, np.random.normal(y_av, sd_y, len(y)))
+ksxp = ksx.pvalue
+print("prawdopodobieństwo p_value = ", round(ksx.pvalue,4))
+
+if ksxp < 0.05:
+    print("\nWedług testu Kołmogorowa-Smirnowa rozkład wielkości y nie jest normalny,\nponieważ prawdopodobieństwo błędnego zanegowania jego normalności \np_value jest < 0.05. ")
+else:
+    print("Według testu Kołmogorowa-Smirnowa rozkład wielkości y jest normalny (nie da się zaprzeczyć normalności rozkładu)\n\n")
+
+# test Shapiro-Wilka
+if nn <= 5000:
+    swx = shapiro(y)
+    print(swx)
+
+    swxp = swx.pvalue
+
+    if swxp < 0.05:
+        print("Według testu Shapiro-Wilka rozkład wielkości y nie jest normalny\n\n")
+    else:
+        print("Według testu Shapiro-Wilka rozkład wielkości y jest normalny (nie da się zaprzeczyć normalności rozkładu)\n\n")
+
+```
+
+### Rozkład y
+
+@fig-4 przedstawia uzyskany rozkład gęstości prawdopodobieństwa $y$ i jego dystrybuantę.
+
+```{python}
+#| label: fig-4
+#| fig-cap: "Rozkład wielkości y "
+#| tbl-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.subplot(1, 2, 1)
+d = np.histogram(y, bins=50, density=True)
+plt.title("Rozkład y")
+plt.xlabel("y")
+plt.ylabel("gęstość prawdopodobieństwa")
+plt.plot(d[1][:-1], d[0], color="#54698a", lw=2)
+
+plt.subplot(1, 2, 2)
+plt.plot(d[1][:-1], np.cumsum(d[0]) / max(np.cumsum(d[0])), lw=2, color="#54698a")
+plt.xlabel("y")
+plt.ylabel("prawdopodobieństwo skumulowane")
+plt.title("Dystrybuanta")
+plt.show()
+
+```
+
+### Mediana, skośność i kurtoza
+
+W celu dodatkowej oceny rozbieżności z rozkładem normalnym wyznaczono medianę, skośność i kurtozę $y$.
+
+```{python}
+
+from scipy.stats import skew
+from scipy.stats import kurtosis
+
+
+med = np.median(y,  axis=0)
+print("mediana = ", round(med,2))
+
+sk = skew(y, axis=0, bias=True)
+print("skośność = ", round(sk,5))
+
+kurt = kurtosis(y, fisher=True, axis=0, bias=True) # kurtoza = 0 dla rozkłądu Gaussa
+print("kurtoza = ", round(kurt,5))
+
+q_025 = np.quantile(y, 0.025)
+q_975 = np.quantile(y, 0.975)
+
+print("kwantyl 0.025 = ", round(q_025,2))
+print("kwantyl 0.975 = ", round(q_975,2))
+```
+
+# Podsumowanie
+
+Wszystkie dane wejściowe $x_1,\: x_2$ i $x_3$ były zgodne z rozkładem Gaussa. Rozkład wielkości wynikowej $y$ lekko odstaje od rozkładu normalnego. Skośność rozkładu jest niewielka. Mediana prawie pokrywa się z wartością średnią. Kurtoza jest lekko dodatnia, co oznacza, że rozkład jest nieco bardziej smukły niż normalny. Rozbieżności od rozkładu normalnego występują w zkresie "ogonów' rozkładu, co wyraźnie widać z wykresu Q-Q na rys. @fig-3. Wyniki są nieco bardziej skupione wokół wartości średniej niż w rozkładzie Gaussa.
+
+Zmienność danych $x_1,\: x_2$ i $x_3$ sprawia, że wynik działania modelu z 95% pewnością znajdzie się w zakresie od 596.13 do 771.98., czyli $y = 682.4_{-86.3}^{+89.6}$.

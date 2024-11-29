@@ -1,0 +1,6 @@
+---
+title: "About"
+jupyter: python3
+---
+
+Jest to przykład prostej symulacji Monte Carlo, napisanej w Pythonie, w Quarto RStudio.
