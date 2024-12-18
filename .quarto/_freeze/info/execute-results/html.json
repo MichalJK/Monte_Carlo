@@ -1,0 +1,12 @@
+{
+  "hash": "51e6dbe7da8b5dda394d3b601c4a10e3",
+  "result": {
+    "engine": "jupyter",
+    "markdown": "---\ntitle: Info\n---\n\nJest to przykład prostej symulacji Monte Carlo, napisanej w Pythonie. Raport wykonano w Quarto, RStudio.\n\n",
+    "supporting": [
+      "info_files\\figure-html"
+    ],
+    "filters": [],
+    "includes": {}
+  }
+}

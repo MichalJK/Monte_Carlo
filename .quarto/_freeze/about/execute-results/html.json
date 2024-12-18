@@ -1,8 +1,8 @@
 {
-  "hash": "c7aba6010cc6c8504e9a208d77531bf0",
+  "hash": "f1ab2fe71478b78b7ae9495b07172c37",
   "result": {
     "engine": "jupyter",
-    "markdown": "---\ntitle: About\n---\n\nJest to przykład prostej symulacji Monte Carlo, napisanej w Pythonie, w Quarto RStudio.\n\n",
+    "markdown": "---\ntitle: About\n---\n\nThis is an example of a simple Monte Carlo simulation programmed in Python. The report was written in Quarto, RStudio.\n\n",
     "supporting": [
       "about_files"
     ],

@@ -13,7 +13,6 @@ format:
     code-fold: true
     code-summary: "Skrypt:"
 editor: visual
-lang: pl
 css: styles.css
 jupyter: python3
 cap-location: margin
@@ -25,7 +24,7 @@ Eksperyment Monte Carlo polega na losowaniu dużej liczby danych z założonego 
 
 Idea metody Monte Carlo została naszkicowana na poniższym rysunku dla bardzo prostego modelu opisanego zwykłą funkcją kilku zmiennych niezależnych $x_i$. W przedstawionym przykładzie założono dla uproszczenia, że rozkład każdej z nich jest zgodny z rozkładem Gaussa.
 
-![Szkic metody Monte Carlo](szkic.png){fig-align="center" width="439"}
+![Szkic metody Monte Carlo](szkic.png){#fig-11 fig-align="center" width="439"}
 
 Schemat losowania danych jest następujący:
 
@@ -33,7 +32,7 @@ Schemat losowania danych jest następujący:
 
 -   następnie z pomocą funkcji odwrotnej skumulowanego rozkładu Gaussa wyznacza się bieżącą wartość danej $x_i$. Poniższy rysunek ilustruje ten proces.
 
-![Schemat losowania wartości $x_i$](losowanie.png){fig-align="center" width="373"}
+![Schemat losowania wartości $x_i$](losowanie.png){#fig-22 fig-align="center" width="373"}
 
 # Funkcje
 
@@ -191,6 +190,7 @@ Wszystkie wyniki obliczeń modelu przedstawiono na rys. @fig-2. Poniżej wyznacz
 
 plt.scatter(range(len(y)), y, s=0.5, color="#54698a")
 plt.xlabel("nr losowania")
+plt.ylabel("y")
 plt.title("Wynik zbiorczy symulacji Monte Carlo")
 plt.show()
 

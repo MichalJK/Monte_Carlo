@@ -1,0 +1,326 @@
+---
+title-block-banner: '#54698a' 
+title-block-banner-color : '#dee1e3'
+title: "Monte Carlo simulation"
+subtitle: "Example"
+author: "Michał Kołodziejczyk"
+date: now
+format: 
+  html:
+    toc: true
+    toc-location: left
+    tbl-pos: 'H'
+    code-fold: true
+    code-summary: "Script:"
+editor: visual
+css: styles.css
+jupyter: python3
+cap-location: margin
+---
+
+Monte Carlo simulation is a method used to predict the probability of an outcome when there is variability in the data. The variability in the data can be described in several ways. Most commonly, statistical methods are used, and in the case of a quantity with a normal distribution, its variability is described by the mean and standard deviation.
+
+In a Monte Carlo experiment, a large number of data are drawn from an assumed range of variability of a particular model quantity. These data are then used to generate a large number of model responses, and the resulting distribution of results is evaluated using statistical methods.
+
+The idea of the Monte Carlo method is outlined in the figure below for a very simple model described by an ordinary function of several independent variables $x_i$. For the sake of simplicity, the distribution of each of these variables is assumed to be Gaussian.
+
+![The idea of the Monte Carlo method](idea.png){#fig-11 fig-align="center" width="496"}
+
+The data sampling scheme is as follows:
+
+-   Using a random number generator, a probability $p$ is drawn for each input data $x_i$,
+-   Then the current value of the data $x_i$ is determined using the inverse Gaussian cumulative distribution function.
+
+The figure below illustrates this process.
+
+![The data sampling scheme of $x_i$](sampling.png){#fig-22 fig-align="center" width="490"}
+
+# Functions
+
+## The model
+
+The model is described by a function of three independent variables $x_1, x_2, x_3$:
+
+$y = a + b \: sin(x_1) + c\: x_2^2 + d \: ln(x_3)$,
+
+where $a,\: b,\: c$ i $d$ are constant parameters.
+
+```{python}
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm, ks_2samp, shapiro
+import math
+
+# model
+def funkcja_model(param, x):
+    a = param[0]
+    b = param[1]
+    c = param[2]
+    d = param[3]
+    # model
+    y = a + b*math.sin(x[0]) + c * (x[1] ** 2) +d * math.log(x[2])
+    return y
+
+```
+
+## Charts
+
+The 'wykresy' function plots the histogram, probability density distribution, and cumulative distribution of each variable. Normal distributions are assumed for simplicity.
+
+```{python}
+
+def wykresy(i, x, sd):
+        plt.subplot(1, 3, 1)
+        plt.hist(np.random.normal(x[i], sd[i], 10000), bins=30, alpha=0.7, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("frequency")
+        plt.title("Histogram")
+
+        xx = np.linspace(x[i] - 4 * sd[i], x[i] + 4 * sd[i], 100)
+        yy = norm.pdf(xx, x[i], sd[i])
+        plt.subplot(1, 3, 2)
+        plt.plot(xx, yy, lw=2, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("probability density")
+        plt.title(f"Distribution of x{i+1}")
+
+        yy = norm.cdf(xx, x[i], sd[i])
+        plt.subplot(1, 3, 3)
+        plt.plot(xx, yy, lw=2, color="#54698a")
+        plt.xlabel(f"x{i+1}")
+        plt.ylabel("cumulative probability")
+        plt.title("cdf")
+        plt.show()
+
+```
+
+## Monte Carlo
+
+Function that implements a Monte Carlo experiment. Formal parameters: n - number of variables $x_i$, nn - number of draws, x - mean values of the $x_i$, sd - their standard deviations, parametry - parameters of the function describing the model. The function uses a random number generator and the inverse function of the cumulative distribution function.
+
+```{python}
+
+def monte_carlo(n, nn, x, sd, parametry):
+    np.random.seed(7)
+    y = np.zeros(nn)
+    for i in range(nn):
+        los_x = np.zeros(n)
+        for j in range(n):
+            los_x[j] = norm.ppf(np.random.rand(), x[j], sd[j])
+        y[i] = funkcja_model(parametry, los_x)
+    return y
+
+```
+
+# The data
+
+Example data.
+
+```{python}
+import pandas as pd
+from itables import show    
+
+n = 3  # the number of independent variables
+parametry = [1, 2, 3, 4]
+
+x1 = 10
+sd1 = 0.51
+
+x2 = 15
+sd2 = 0.5
+
+x3 = 5
+sd3 = 0.1
+
+x = [x1, x2, x3]
+sd = [sd1, sd2, sd3]
+
+dane_x = pd.DataFrame(x)
+dane_sd = pd.DataFrame(sd)
+
+dane = pd.concat([dane_x, dane_sd], axis=1)
+dane.columns = ['x','std']
+dane.index = ['x1','x2','x3']
+
+show(np.transpose(dane))
+
+```
+
+## Data distributions
+
+Input data distributions.
+
+```{python}
+#| label: fig-1
+#| fig-cap: 
+#|   - "Distribution of x1"
+#|   - "Distribution of x2"
+#|   - "Distribution of x3"
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+for i in range(n):
+    wykresy(i, x, sd)
+
+```
+
+# Monte Carlo Simulation
+
+Number of draws assumed: $nn = 100 \: 000$.
+
+## Monte Carlo simulation results
+
+```{python}
+
+nn = 100000  # the number od draws
+
+y = monte_carlo(n, nn, x, sd, parametry)  #  Monte Carlo simulation
+
+```
+
+All the results of the model calculations are shown in @fig-2 . Their mean and standard deviation are given below.
+
+```{python}
+#| label: fig-2
+#| fig-cap: "Results of sampling in Monte Carlo simulation "
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.scatter(range(len(y)), y, s=0.5, color="#54698a")
+plt.xlabel("draw number")
+plt.ylabel("y")
+plt.title("Summary Result of Monte Carlo Simulation")
+plt.show()
+
+y_av = np.mean(y)
+sd_y = np.std(y)
+
+print("The resulting mean y_av = ", round(y_av,2))
+print("Standard deviation sd_y = ", round(sd_y,2))
+
+```
+
+## Distribution of the resulting quantity
+
+@fig-3 shows a histogram and a $y$ quantile plot for visual evaluation of the distribution.
+
+### Histogram and quantile plot
+
+The histogram allows you to assess the symmetry of the distribution, and the quantile plot allows you to assess whether the distribution is normal.
+
+```{python}
+#| label: fig-3
+#| fig-cap: "Visual check of the normality of the y-distribution "
+#| fig-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.subplot(1, 2, 1)
+plt.hist(y, bins=30, color="#54698a", alpha=0.7)
+plt.title("Histogram of y")
+plt.ylabel("frequency")
+plt.xlabel("y")
+
+yy = (y - y_av) / sd_y  # Standardization of distribution
+
+plt.subplot(1, 2, 2)
+plt.scatter(np.sort(norm.ppf(np.linspace(0.01, 0.99, len(yy)))), np.sort(yy), s=0.5, color="#54698a")
+plt.title('Quantile plot Q-Q')
+plt.xlabel('quantiles of the normal distribution')
+plt.ylabel('quantiles of the y-distribution')
+plt.plot([min(yy), max(yy)], [min(yy), max(yy)], color='#96cdf2')
+plt.show()
+
+```
+
+### Check the normality of the y-distribution
+
+The $y$ has 100,000 elements, so the Kolmogorov-Smirnov test was used to assess the normality of its distribution..
+
+```{python}
+
+# Kolmogorow-Smirnow test
+ksx = ks_2samp(y, np.random.normal(y_av, sd_y, len(y)))
+ksxp = ksx.pvalue
+print(" p_value = ", round(ksx.pvalue,4))
+
+if ksxp < 0.05:
+    print("\nAccording to the Kolmogorov-Smirnov test, the distribution of y-size is not normal,\nbecause the probability of falsely negating its normality  \np_value is < 0.05. ")
+else:
+    print("According to the Kolmogorov-Smirnov test, the distribution of y is normal (the normality of the distribution cannot be denied)\n\n")
+
+# Shapiro-Wilka test
+if nn <= 5000:
+    swx = shapiro(y)
+    print(swx)
+
+    swxp = swx.pvalue
+
+    if swxp < 0.05:
+        print("According to the Shapiro-Wilk test, the distribution of y-size is not normal\n\n")
+    else:
+        print("According to the Shapiro-Wilk test, the distribution of y is normal (the normality of the distribution cannot be denied)\n\n")
+
+```
+
+### The distribution of y
+
+@fig-4 represents the obtained probability density distribution $y$ and its cumulative distribution function.
+
+```{python}
+#| label: fig-4
+#| fig-cap: "The distribution of y "
+#| tbl-cap-location: margin
+#| message: false
+#| warning: false
+
+plt.subplot(1, 2, 1)
+d = np.histogram(y, bins=50, density=True)
+plt.title("The distribution of y")
+plt.xlabel("y")
+plt.ylabel("probability density")
+plt.plot(d[1][:-1], d[0], color="#54698a", lw=2)
+
+plt.subplot(1, 2, 2)
+plt.plot(d[1][:-1], np.cumsum(d[0]) / max(np.cumsum(d[0])), lw=2, color="#54698a")
+plt.xlabel("y")
+plt.ylabel("cumulative probability")
+plt.title("Cumulative distribution function")
+plt.show()
+
+```
+
+### Median, skewness and kurtosis
+
+The median, skewness, and kurtosis of $y$ were determined to further assess the deviation from the normal distribution.
+
+```{python}
+
+from scipy.stats import skew
+from scipy.stats import kurtosis
+
+
+med = np.median(y,  axis=0)
+print("Median = ", round(med,2))
+
+sk = skew(y, axis=0, bias=True)
+print("Skewness = ", round(sk,5))
+
+kurt = kurtosis(y, fisher=True, axis=0, bias=True) # kurtoza = 0 dla rozkłądu Gaussa
+print("Kortosis = ", round(kurt,5))
+
+q_025 = np.quantile(y, 0.025)
+q_975 = np.quantile(y, 0.975)
+
+print("0.025 quantile = ", round(q_025,2))
+print("0.975 quantile = ", round(q_975,2))
+```
+
+# Conclusion
+
+All inputs $x_1,\: x_2$ and $x_3$ follow a Gaussian distribution. The distribution of the result $y$ deviates slightly from the normal distribution. The skewness is small. The median is close to the mean. The kurtosis is slightly positive, which means that the distribution is slightly narrower than normal. The deviation from the normal distribution occurs in the 'tails' of the distribution, as can be clearly seen in the Q-Q plot in @fig-3 . The results are slightly more assembled around the mean than with the Gaussian distribution.
+
+The variability of the data $x_1,\: x_2$ and $x_3$ means that the result of the model's performance will be in the range of 596.13 to 771.98 with 95% confidence, i.e. $y = 682.4_{-86.3}^{+89.6}$.
